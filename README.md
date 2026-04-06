@@ -27,7 +27,21 @@ cd SDMGAE
 pip install -r requirements.txt
 ```
 
-## Running SMGAE
+## Dataset Description
+
+The dataset consists of three main components:
+
+### 1. Feature (Node Features)
+- Feature is an N×F dimensional matrix, where N represents the number of genes and F represents the feature dimension. It is constructed by concatenating gene expression, gene mutation, copy number variation (CNV), and DNA methylation data, all derived from the TCGA database.
+
+### 2. CPDB (Graph Structure)
+- CPDB is derived from ConsensusPathDB and is used to construct graph structures, reflecting which genes are connected by edges.
+
+### 3. Label (Node Labels)
+- The label indicates whether each gene is a cancer‑associated gene.
+
+
+## User Guide
 
 ```bash
 python main_transductive.py 
