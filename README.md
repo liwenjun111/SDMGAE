@@ -43,6 +43,15 @@ The dataset consists of three main components:
 
 ## User Guide
 
+### Step 1: Prepare Dataset
+Modify the code in train.py under GAE_model according to the requirements:
 ```bash
-python main_transductive.py 
+data, clf_data = get_PPIdataset('D:/SDMGAE-main/data/PANCER/', 'feature.csv', 'CPDB.csv', 'label.csv')
 ```
+
+### Step 2: Pretraining and Evaluation
+Run the code:
+```bash
+python main_transductive.py
+```
+The model will be pre-trained, and the obtained embeddings will be evaluated using ten rounds of 5-fold cross-validation. Finally, the average AUROC and AUPRC values will be output.
