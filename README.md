@@ -44,10 +44,21 @@ The dataset consists of three main components:
 ## User Guide
 
 ### Step 1: Prepare Dataset
-Modify the code in train.py under GAE_model according to the requirements:
+Modify the code according to your needs.
+GAE_model/train.py:
 ```bash
 data, clf_data = get_PPIdataset('D:/SDMGAE-main/data/PANCER/', 'feature.csv', 'CPDB.csv', 'label.csv')
 ```
+SAGAE_main/datasets/data_util.py:
+```bash
+features_df = pd.read_csv("D:/SDMGAE-main/data/PANCER/feature.csv")
+edges_df = pd.read_csv("D:/SDMGAE-main/data/PANCER/CPDB.csv")
+```
+SAGAE_main/models/evaluation_5cv.py:
+```bash
+labels_df = pd.read_csv("D:/SDMGAE-main/data/PANCER/label.csv")
+```
+
 
 ### Step 2: Pretraining and Evaluation
 Run the code:
