@@ -45,6 +45,7 @@ The dataset consists of three main components:
 
 ### Step 1: Prepare Dataset
 Modify the code according to your needs.
+
 GAE_model/train.py:
 ```bash
 data, clf_data = get_PPIdataset('D:/SDMGAE-main/data/PANCER/', 'feature.csv', 'CPDB.csv', 'label.csv')
