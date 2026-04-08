@@ -35,7 +35,7 @@ The dataset consists of three main components:
 - Feature is an N×F dimensional matrix, where N represents the number of genes and F represents the feature dimension. It is constructed by concatenating gene expression, gene mutation, copy number variation (CNV), and DNA methylation data, all derived from the TCGA database.
 <table>
   <tr>
-    <td>gene</td>
+    <td>gene symbol</td>
     <td>CNV_TCGA</td>
     <td>...</td>
     <td>EXP_TCGA</td>
@@ -124,16 +124,16 @@ Modify the code according to your needs.
 
 GAE_model/train.py:
 ```bash
-data, clf_data = get_PPIdataset('D:/SDMGAE-main/data/PANCER/', 'feature.csv', 'CPDB.csv', 'label.csv')
+data, clf_data = get_PPIdataset('./data/PANCER/', 'feature.csv', 'CPDB.csv', 'label.csv')
 ```
 SAGAE_main/datasets/data_util.py:
 ```bash
-features_df = pd.read_csv("D:/SDMGAE-main/data/PANCER/feature.csv")
-edges_df = pd.read_csv("D:/SDMGAE-main/data/PANCER/CPDB.csv")
+features_df = pd.read_csv("./data/PANCER/feature.csv")
+edges_df = pd.read_csv("./data/PANCER/CPDB.csv")
 ```
 SAGAE_main/models/evaluation_5cv.py:
 ```bash
-labels_df = pd.read_csv("D:/SDMGAE-main/data/PANCER/label.csv")
+labels_df = pd.read_csv("./data/PANCER/label.csv")
 ```
 
 
