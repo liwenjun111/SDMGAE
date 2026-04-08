@@ -37,30 +37,46 @@ The dataset consists of three main components:
   <tr>
     <td>gene</td>
     <td>CNV_TCGA</td>
+    <td>...</td>
     <td>EXP_TCGA</td>
+    <td>...</td>
     <td>MET_TCGA</td>
+    <td>...</td>
     <td>MUT_TCGA</td>
+    <td>...</td>
   </tr>
   <tr>
     <td>gene1</td>
     <td>cnv</td>
+    <td>...</td>
     <td>exp</td>
+    <td>...</td>
     <td>meth</td>
+    <td>...</td>
     <td>mut</td>
+    <td>...</td>
   </tr>
   <tr>
     <td>gene2</td>
     <td>cnv</td>
+    <td>...</td>
     <td>exp</td>
+    <td>...</td>
     <td>meth</td>
+    <td>...</td>
     <td>mut</td>
+    <td>...</td>
   </tr>
   <tr>
     <td>gene3</td>
     <td>cnv</td>
+    <td>...</td>
     <td>exp</td>
+    <td>...</td>
     <td>meth</td>
+    <td>...</td>
     <td>mut</td>
+    <td>...</td>
   </tr>
 </table>
 
