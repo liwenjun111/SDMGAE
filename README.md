@@ -101,7 +101,7 @@ The dataset consists of three main components:
 - The label indicates whether each gene is a cancer‑associated gene.
 <table>
   <tr>
-    <td>gene</td>
+    <td>gene symbol</td>
     <td>index</td>
     <td>label</td>
   </tr>
