@@ -36,11 +36,20 @@ The dataset consists of three main components:
 
 ### 2. CPDB (Graph Structure)
 - CPDB is derived from ConsensusPathDB and is used to construct graph structures, reflecting which genes are connected by edges.
-| Source Gene | Target Gene |
-|-------------|------------|
-| gene1       | gene3      |
-| gene2       | gene4      |
-| gene3       | gene5      |
+<table>
+  <tr>
+    <td>source</td>
+    <td>target</td>
+  </tr>
+  <tr>
+    <td>gene1</td>
+    <td>gene3</td>
+  </tr>
+  <tr>
+    <td>gene2</td>
+    <td>gene4</td>
+  </tr>
+</table>
 ### 3. Label (Node Labels)
 - The label indicates whether each gene is a cancer‑associated gene.
 
