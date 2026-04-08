@@ -84,8 +84,8 @@ The dataset consists of three main components:
 - PPI network is derived from ConsensusPathDB and is used to construct graph structures, reflecting which genes are connected by edges.
 <table>
   <tr>
-    <td>source</td>
-    <td>target</td>
+    <td>source gene</td>
+    <td>target gene</td>
   </tr>
   <tr>
     <td>gene1-index</td>
