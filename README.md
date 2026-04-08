@@ -33,6 +33,36 @@ The dataset consists of three main components:
 
 ### 1. Feature (Node Features)
 - Feature is an N×F dimensional matrix, where N represents the number of genes and F represents the feature dimension. It is constructed by concatenating gene expression, gene mutation, copy number variation (CNV), and DNA methylation data, all derived from the TCGA database.
+<table>
+  <tr>
+    <td>gene</td>
+    <td>CNV_TCGA</td>
+    <td>EXP_TCGA</td>
+    <td>MET_TCGA</td>
+    <td>MUT_TCGA</td>
+  </tr>
+  <tr>
+    <td>gene1</td>
+    <td>cnv</td>
+    <td>exp</td>
+    <td>meth</td>
+    <td>mut</td>
+  </tr>
+  <tr>
+    <td>gene2</td>
+    <td>cnv</td>
+    <td>exp</td>
+    <td>meth</td>
+    <td>mut</td>
+  </tr>
+  <tr>
+    <td>gene3</td>
+    <td>cnv</td>
+    <td>exp</td>
+    <td>meth</td>
+    <td>mut</td>
+  </tr>
+</table>
 
 ### 2. CPDB (Graph Structure)
 - CPDB is derived from ConsensusPathDB and is used to construct graph structures, reflecting which genes are connected by edges.
@@ -42,17 +72,34 @@ The dataset consists of three main components:
     <td>target</td>
   </tr>
   <tr>
+    <td>gene1-index</td>
+    <td>gene3-index</td>
+  </tr>
+  <tr>
+    <td>gene2-index</td>
+    <td>gene4-index</td>
+  </tr>
+</table>
+
+### 3. Label (Node Labels)
+- The label indicates whether each gene is a cancer‑associated gene.
+<table>
+  <tr>
+    <td>gene</td>
+    <td>index</td>
+    <td>label</td>
+  </tr>
+  <tr>
     <td>gene1</td>
-    <td>gene3</td>
+    <td>gene1-index</td>
+    <td>1</td>
   </tr>
   <tr>
     <td>gene2</td>
-    <td>gene4</td>
+    <td>gene2-index</td>
+    <td>0</td>
   </tr>
 </table>
-### 3. Label (Node Labels)
-- The label indicates whether each gene is a cancer‑associated gene.
-
 
 ## User Guide
 
