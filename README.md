@@ -80,8 +80,8 @@ The dataset consists of three main components:
   </tr>
 </table>
 
-### 2. CPDB (Graph Structure)
-- CPDB is derived from ConsensusPathDB and is used to construct graph structures, reflecting which genes are connected by edges.
+### 2. PPI network (Graph Structure)
+- PPI network is derived from ConsensusPathDB and is used to construct graph structures, reflecting which genes are connected by edges.
 <table>
   <tr>
     <td>source</td>
