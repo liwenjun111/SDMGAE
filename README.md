@@ -36,45 +36,61 @@ The dataset consists of three main components:
 <table>
   <tr>
     <td>gene symbol</td>
-    <td>CNV_TCGA</td>
+    <td>CNV-sample1</td>
+    <td>CNV-sample2</td>
     <td>...</td>
-    <td>EXP_TCGA</td>
+    <td>EXP-sample1</td>
+    <td>EXP-sample2</td>
     <td>...</td>
-    <td>MET_TCGA</td>
+    <td>MET-sample1</td>
+    <td>MET-sample2</td>
     <td>...</td>
-    <td>MUT_TCGA</td>
+    <td>MUT-sample1</td>
+    <td>MUT-sample2</td>
     <td>...</td>
   </tr>
   <tr>
     <td>gene1</td>
     <td>cnv</td>
+    <td>cnv</td>
     <td>...</td>
+    <td>exp</td>
     <td>exp</td>
     <td>...</td>
     <td>meth</td>
+    <td>meth</td>
     <td>...</td>
+    <td>mut</td>
     <td>mut</td>
     <td>...</td>
   </tr>
   <tr>
     <td>gene2</td>
     <td>cnv</td>
+    <td>cnv</td>
     <td>...</td>
+    <td>exp</td>
     <td>exp</td>
     <td>...</td>
     <td>meth</td>
+    <td>meth</td>
     <td>...</td>
+    <td>mut</td>
     <td>mut</td>
     <td>...</td>
   </tr>
   <tr>
     <td>gene3</td>
     <td>cnv</td>
+    <td>cnv</td>
     <td>...</td>
+    <td>exp</td>
     <td>exp</td>
     <td>...</td>
     <td>meth</td>
+    <td>meth</td>
     <td>...</td>
+    <td>mut</td>
     <td>mut</td>
     <td>...</td>
   </tr>
