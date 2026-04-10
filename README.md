@@ -159,8 +159,8 @@ The dataset consists of three main components:
 
 ## User Guide
 
-### Step 1: Prepare Dataset
-Modify the code according to your needs.
+### Step 1: Preparing Dataset
+We take pan-cancer data as an example to explicitly specify the code execution steps, and the users can Mmodify the code according to theiryour needs.
 
 GAE_model/train.py:
 ```bash
