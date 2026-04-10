@@ -126,6 +126,10 @@ The dataset consists of three main components:
     <td>gene2-index</td>
     <td>gene4-index</td>
   </tr>
+  <tr>
+    <td>...</td>
+    <td>...</td>
+  </tr>
 </table>
 
 ### 3. Label (Node Labels)
@@ -145,6 +149,11 @@ The dataset consists of three main components:
     <td>gene2</td>
     <td>gene2-index</td>
     <td>0</td>
+  </tr>
+  <tr>
+    <td>...</td>
+    <td>...</td>
+    <td>...</td>
   </tr>
 </table>
 
