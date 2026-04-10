@@ -94,6 +94,21 @@ The dataset consists of three main components:
     <td>mut</td>
     <td>...</td>
   </tr>
+  <tr>
+    <td>...</td>
+    <td>...</td>
+    <td>...</td>
+    <td>...</td>
+    <td>...</td>
+    <td>...</td>
+    <td>...</td>
+    <td>...</td>
+    <td>...</td>
+    <td>...</td>
+    <td>...</td>
+    <td>...</td>
+    <td>...</td>
+  </tr>
 </table>
 
 ### 2. PPI network (Graph Structure)
