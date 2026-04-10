@@ -1,4 +1,5 @@
 from sklearn.model_selection import KFold
+from sklearn.model_selection import StratifiedKFold
 import random
 import copy
 from tqdm import tqdm
@@ -11,9 +12,13 @@ from sklearn import metrics
 from SMGAE_main.utils import create_optimizer, accuracy, f1_score, AUC, AUPRC
 import numpy as np
 from GAE_model.train import embedding
+import torch
+
 
 def node_classification_evaluation_5cv(model, graph, x, num_classes, lr_f, weight_decay_f, max_epoch_f, device,linear_prob=True, mute=False):
-    model.eval()
+    if model is not None:
+        model.eval()
+
     if linear_prob:
         with torch.no_grad():
             in_feat =embedding.shape[1]
@@ -36,19 +41,19 @@ def linear_probing_for_transductive_node_classiifcation(model, graph, feat, opti
 
     graph = graph.to(device)
     #x = feat.to(device)
-    # 从CSV文件加载标签数据
-    labels_df = pd.read_csv("/data/datasets/label.csv")
+
+    labels_df = pd.read_csv("./data/PANCER/label.csv")
     labels = labels_df["label"].values
     labels = torch.tensor(labels)
     labels = labels.to(device)
-    # 将标签数据设置为Graph的节点标签
+
     graph.ndata["label"] = labels
     labels =  graph.ndata["label"]
-    labeled_nodes_mask = (labels != -1)  # 只评估已标记节点
+    labeled_nodes_mask = (labels != -1)
     labeled_labels = labels[labeled_nodes_mask]
 
     # 随机欠采样
-    #################################################
+    ################################################
     # 统计正样本和负样本数量
     positive_count = (labels == 1).sum().item()
     negative_count = (labels == 0).sum().item()
@@ -102,8 +107,10 @@ def linear_probing_for_transductive_node_classiifcation(model, graph, feat, opti
     train_mask = subgraph.ndata["train_mask"]
     test_mask = subgraph.ndata["test_mask"]
 
+
     # 进行K折交叉验证
     for fold, (train_index, test_index) in enumerate(kf.split(nodes, labeled_labels)):
+    # for fold, (train_index, test_index) in enumerate(skf.split(nodes_cpu, labels_cpu)):
      for run in range(1, 10 + 1):
 
 
@@ -202,10 +209,10 @@ def linear_probing_for_transductive_node_classiifcation(model, graph, feat, opti
 
     if mute:
         print(f"# IGNORE: --- Pretrain End--- ")
-    else:
-        # 打印每个折的测试结果
-        for run in range(10):
-          print( f"--- Run {run + 1}: TrainAuc: {train_aucs[run]:.4f}, TestAuc: {test_aucs[run]:.4f}, Best testAUC: {best_test_aucs[run]:.4f} ,estp testAUC: {estp_test_aucs[run]:.4f} ,TrainAuprc: {train_auprcs[run]:.4f}, TestAuprc: {test_auprcs[run]:.4f},Best testAUPRC: {best_test_auprcs[run]:.4f} ,estp testAUPRC: {estp_test_auprcs[run]:.4f} , in epoch {best_test_epoch} ---")
+    # else:
+    #     # 打印每个折的测试结果
+    #     for run in range(10):
+    #       print( f"--- Run {run + 1}: TrainAuc: {train_aucs[run]:.4f}, TestAuc: {test_aucs[run]:.4f}, Best testAUC: {best_test_aucs[run]:.4f} ,estp testAUC: {estp_test_aucs[run]:.4f} ,TrainAuprc: {train_auprcs[run]:.4f}, TestAuprc: {test_auprcs[run]:.4f},Best testAUPRC: {best_test_auprcs[run]:.4f} ,estp testAUPRC: {estp_test_auprcs[run]:.4f} , in epoch {best_test_epoch} ---")
 
     # 计算平均准确率
 
@@ -215,6 +222,7 @@ def linear_probing_for_transductive_node_classiifcation(model, graph, feat, opti
     print(f"--- Average TestAuc: {avg_test_auc:.4f}±{avg_test_auc_std:.4f}, Average TestAuprc: {avg_test_auprc:.4f}±{avg_test_auprc_std:.4f}---")
 
     return  avg_test_auc, avg_test_auprc
+
 
 
 class LogisticRegression(nn.Module):

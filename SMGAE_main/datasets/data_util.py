@@ -13,9 +13,9 @@ from sklearn.preprocessing import StandardScaler
 
 def preprocess(graph):
     feat = graph.ndata["feat"]
-    # 去除自环
+
     graph = dgl.remove_self_loop(graph)
-    # 去除重复边并转换为简单图
+
     graph = dgl.to_simple(graph)
     graph = dgl.to_bidirected(graph)
     graph.ndata["feat"] = feat
@@ -33,37 +33,49 @@ def scale_feats(x):
     feats = torch.from_numpy(scaler.transform(feats)).float()
     return feats
 
-
 def load_dataset():
-
-        # 从CSV文件加载边列表
-        edges_df = pd.read_csv("/data/datasets/CPDB.csv")
-        src_nodes = edges_df.iloc[:, 0].values
-        dst_nodes = edges_df.iloc[:, 1].values
-        # 创建DGL Graph对象
-        graph = dgl.graph((src_nodes, dst_nodes))
+    import pandas as pd
+    import torch
+    import dgl
 
 
-        # 从CSV文件加载生物特征数据
-        features_df = pd.read_csv("/data/datasets/feature.csv")
-        feat_bio = features_df.values
-        feat_bio = torch.tensor(feat_bio)
-        feat_bio = scale_feats(feat_bio)
+    features_df = pd.read_csv("./data/PANCER/feature.csv")
 
-        # 将特征数据设置为Graph的节点特征
-        graph.ndata["feat"] = feat_bio
+    if "gene" in features_df.columns:
+        features_df = features_df.drop(columns=["gene"])
 
-        # 图预处理
-        graph = preprocess(graph)
-        # 特征标准化
-        feat = graph.ndata["feat"]
-        feat = scale_feats(feat)
-        graph.ndata["feat"] = feat
+    features_df = features_df.apply(pd.to_numeric, errors="coerce").fillna(0.0)
+    feat_bio = torch.tensor(features_df.values, dtype=torch.float32)
+    feat_bio = scale_feats(feat_bio)
 
-        num_features = graph.ndata["feat"].shape[1]
-        print("特征维度:",num_features)
-        num_classes = 2
-        return graph, (num_features, num_classes)
+    num_nodes = feat_bio.shape[0]  # 9110
+    num_features = feat_bio.shape[1]
+    print("特征维度:", num_features)
+
+
+    edges_df = pd.read_csv("./data/PANCER/CPDB.csv")
+    src_nodes = edges_df.iloc[:, 0].to_numpy()
+    dst_nodes = edges_df.iloc[:, 1].to_numpy()
+
+    mask = (src_nodes >= 0) & (src_nodes < num_nodes) & (dst_nodes >= 0) & (dst_nodes < num_nodes)
+    src_nodes = src_nodes[mask]
+    dst_nodes = dst_nodes[mask]
+
+
+    graph = dgl.graph((src_nodes, dst_nodes), num_nodes=num_nodes)
+
+
+    graph.ndata["feat"] = feat_bio
+
+
+    graph = preprocess(graph)
+    feat = scale_feats(graph.ndata["feat"])
+    graph.ndata["feat"] = feat
+
+    num_classes = 2
+    return graph, (num_features, num_classes)
+
+
 
 
 

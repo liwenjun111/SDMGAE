@@ -1,4 +1,4 @@
-from .edcoder import PreModel
+from .encoder import PreModel
 
 
 def build_model(args):
