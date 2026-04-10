@@ -24,14 +24,31 @@ from SMGAE_main.utils import build_args
 from GAE_model.loss import info_nce_loss, ce_loss, log_rank_loss, hinge_auc_loss, auc_loss, sce_loss, MyMSEloss
 
 
+# def to_sparse_tensor(edge_index, num_nodes):
+#     row = edge_index[0]
+#     col = edge_index[1]
+#     row = torch.tensor(row, dtype=torch.long)
+#     col = torch.tensor(col, dtype=torch.long)
+#     values = torch.ones_like(row)
+#     sparse_sizes = (num_nodes, num_nodes)
+#     sparse_tensor = torch.sparse.FloatTensor(edge_index, values, sparse_sizes).to(edge_index.device)
+#     return sparse_tensor
 def to_sparse_tensor(edge_index, num_nodes):
-    row = edge_index[0]
-    col = edge_index[1]
-    row = torch.tensor(row, dtype=torch.long)
-    col = torch.tensor(col, dtype=torch.long)
-    values = torch.ones_like(row)
+    # edge_index: [2, E] (Long)
+    edge_index = edge_index.to(torch.long)
+
+    # values 必须是 float（不能用 ones_like(row)）
+    values = torch.ones(edge_index.size(1),
+                        device=edge_index.device,
+                        dtype=torch.float32)
+
     sparse_sizes = (num_nodes, num_nodes)
-    sparse_tensor = torch.sparse.FloatTensor(edge_index, values, sparse_sizes).to(edge_index.device)
+
+    # 用新版 API（顺便消除 deprecated warning）
+    sparse_tensor = torch.sparse_coo_tensor(
+        edge_index, values, sparse_sizes,
+        dtype=torch.float32, device=edge_index.device
+    )
     return sparse_tensor
 
 
@@ -230,7 +247,7 @@ class NodeDecoder(nn.Module):
     """Simple MLP Degree Decoder"""
 
     def __init__(
-        self, in_channels, hidden_channels, out_channels=732,
+        self, in_channels, hidden_channels, out_channels=2384,
         num_layers=2, dropout=0.5, activation='relu',
     ):
 
@@ -417,3 +434,137 @@ class MaskGAE(nn.Module):
             results[f"Hits@{K}"] = hits
 
         return results
+class DualEncMaskGAE(nn.Module):
+    """
+    Dual-encoder version of MaskGAE:
+    - encoder_edge: for edge reconstruction
+    - encoder_node: for node feature reconstruction
+    """
+
+    def __init__(
+        self,
+        encoder_edge,
+        encoder_node,
+        edge_decoder,
+        node_decoder,
+        mask1,   # edge/path mask
+        mask2,   # node feature mask
+        random_negative_sampling=True,
+        loss="ce",
+    ):
+        super().__init__()
+        self.encoder_edge = encoder_edge
+        self.encoder_node = encoder_node
+        self.edge_decoder = edge_decoder
+        self.node_decoder = node_decoder
+        self.mask1 = mask1
+        self.mask2 = mask2
+
+        if loss == "ce":
+            self.loss_fn = ce_loss
+        elif loss == "auc":
+            self.loss_fn = auc_loss
+        elif loss == "info_nce":
+            self.loss_fn = info_nce_loss
+        elif loss == "log_rank":
+            self.loss_fn = log_rank_loss
+        elif loss == "hinge_auc":
+            self.loss_fn = hinge_auc_loss
+        else:
+            raise ValueError(loss)
+
+        if random_negative_sampling:
+            self.negative_sampler = random_negative_sampler
+        else:
+            self.negative_sampler = negative_sampling
+
+    def reset_parameters(self):
+        self.encoder_edge.reset_parameters()
+        self.encoder_node.reset_parameters()
+        self.edge_decoder.reset_parameters()
+        self.node_decoder.reset_parameters()
+
+    def forward(self, x, edge_index):
+        """
+        默认 forward：返回 edge-encoder 的 embedding（方便下游）
+        """
+        return self.encoder_edge(x, edge_index)
+
+    def train_step(self, data, optimizer, alpha=0.5,
+                   batch_size=2 ** 16, grad_norm=1.0):
+
+        self.train()
+        x, edge_index = data.x, data.edge_index
+
+        # ======= masking =======
+        remaining_edges, masked_edges = self.mask1(edge_index)
+        masked_x = self.mask2(x)
+
+        # ======= negative sampling =======
+        aug_edge_index, _ = add_self_loops(edge_index)
+        neg_edges = self.negative_sampler(
+            aug_edge_index,
+            num_nodes=data.num_nodes,
+            num_neg_samples=masked_edges.view(2, -1).size(1),
+        ).view_as(masked_edges)
+
+        loss_total = 0.0
+
+        for perm in DataLoader(
+            range(masked_edges.size(1)), batch_size=batch_size, shuffle=True
+        ):
+            optimizer.zero_grad()
+
+            # ======= two parallel encoders =======
+            z_e = self.encoder_edge(x, remaining_edges)       # Edge-view
+            z_x = self.encoder_node(masked_x, edge_index)     # Node-view
+
+            batch_masked_edges = masked_edges[:, perm]
+            batch_neg_edges = neg_edges[:, perm]
+
+            # ======= Edge reconstruction loss =======
+            pos_out = self.edge_decoder(z_e, batch_masked_edges, sigmoid=False)
+            neg_out = self.edge_decoder(z_e, batch_neg_edges, sigmoid=False)
+            loss1 = self.loss_fn(pos_out, neg_out)
+
+            # ======= Node reconstruction loss =======
+            loss2 = sce_loss(self.node_decoder(z_x).squeeze(), x)
+
+            # ======= total loss =======
+            loss = alpha * loss1 + (1 - alpha) * loss2
+            loss.backward()
+
+            if grad_norm > 0:
+                nn.utils.clip_grad_norm_(self.parameters(), grad_norm)
+
+            optimizer.step()
+            loss_total += loss.item()
+
+        return loss_total
+
+    @torch.no_grad()
+    def batch_predict(self, z, edges, batch_size=2 ** 16):
+        preds = []
+        for perm in DataLoader(range(edges.size(1)), batch_size):
+            edge = edges[:, perm]
+            preds += [self.edge_decoder(z, edge).squeeze().cpu()]
+        pred = torch.cat(preds, dim=0)
+        return pred
+
+    @torch.no_grad()
+    def test_step(self, data, pos_edge_index, neg_edge_index, batch_size=2 ** 16):
+        self.eval()
+        # 关键：测试阶段默认用 edge-encoder 的 embedding
+        z = self.encoder_edge(data.x, data.edge_index)
+
+        pos_pred = self.batch_predict(z, pos_edge_index)
+        neg_pred = self.batch_predict(z, neg_edge_index)
+
+        pred = torch.cat([pos_pred, neg_pred], dim=0)
+        pos_y = pos_pred.new_ones(pos_pred.size(0))
+        neg_y = neg_pred.new_zeros(neg_pred.size(0))
+
+        y = torch.cat([pos_y, neg_y], dim=0)
+        y, pred = y.cpu().numpy(), pred.cpu().numpy()
+
+        return roc_auc_score(y, pred), average_precision_score(y, pred)

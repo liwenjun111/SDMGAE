@@ -89,14 +89,64 @@ def mask_path(edge_index: Tensor, p: float = 0.3, walks_per_node: int = 1,
     return edge_index[:, edge_mask], edge_index[:, ~edge_mask]
 
 
-def mask_edge(edge_index: Tensor, p: float=0.7):
+# def mask_edge(edge_index: Tensor, p: float=0.7):
+#     if p < 0. or p > 1.:
+#         raise ValueError(f'Mask probability has to be between 0 and 1 '
+#                          f'(got {p}')
+#     e_ids = torch.arange(edge_index.size(1), dtype=torch.long, device=edge_index.device)
+#     mask = torch.full_like(e_ids, p, dtype=torch.float32)
+#     mask = torch.bernoulli(mask).to(torch.bool)
+#     return edge_index[:, ~mask], edge_index[:, mask]
+def mask_edge(edge_index: Tensor, p: float = 0.7, min_keep: int = 1, max_fix_rounds: int = 5):
+    """
+    Randomly mask edges, but enforce that every node keeps at least `min_keep` incident edges
+    (undirected degree) by restoring some masked edges.
+    """
     if p < 0. or p > 1.:
-        raise ValueError(f'Mask probability has to be between 0 and 1 '
-                         f'(got {p}')    
-    e_ids = torch.arange(edge_index.size(1), dtype=torch.long, device=edge_index.device)
-    mask = torch.full_like(e_ids, p, dtype=torch.float32)
-    mask = torch.bernoulli(mask).to(torch.bool)
-    return edge_index[:, ~mask], edge_index[:, mask]
+        raise ValueError(f"p must be in [0,1], got {p}")
+
+    device = edge_index.device
+    E = edge_index.size(1)
+    if E == 0:
+        return edge_index, edge_index.new_empty((2, 0))
+
+    row, col = edge_index[0], edge_index[1]
+    num_nodes = int(edge_index.max().item()) + 1
+
+    # initial random mask
+    mask = torch.bernoulli(torch.full((E,), p, device=device)).bool()  # True = masked
+
+    def compute_deg(rem_edges):
+        # undirected degree: count both endpoints
+        if rem_edges.numel() == 0:
+            return torch.zeros(num_nodes, dtype=torch.long, device=device)
+        return (torch.bincount(rem_edges[0], minlength=num_nodes) +
+                torch.bincount(rem_edges[1], minlength=num_nodes))
+
+    # iterative fix: restore edges for isolated/low-degree nodes
+    for _ in range(max_fix_rounds):
+        rem = edge_index[:, ~mask]
+        deg = compute_deg(rem)
+        need = (deg < min_keep).nonzero(as_tuple=False).view(-1)  # deg==0 when min_keep=1
+
+        if need.numel() == 0:
+            break
+
+        # for each node that needs edges, restore one incident masked edge
+        for v in need.tolist():
+            incident = ((row == v) | (col == v)).nonzero(as_tuple=False).view(-1)
+            if incident.numel() == 0:
+                continue
+            incident_masked = incident[mask[incident]]
+            if incident_masked.numel() == 0:
+                continue
+            pick = incident_masked[torch.randint(incident_masked.numel(), (1,), device=device)]
+            mask[pick] = False  # restore this edge
+
+    rem = edge_index[:, ~mask]
+    msk = edge_index[:, mask]
+    return rem, msk
+
 
 
 
@@ -150,7 +200,7 @@ class MaskEdge(nn.Module):
         self.undirected = undirected
 
     def forward(self, edge_index):
-        remaining_edges, masked_edges = mask_edge(edge_index, p=self.p)
+        remaining_edges, masked_edges = mask_edge(edge_index, p=self.p, min_keep=1)
         if self.undirected:
             remaining_edges = to_undirected(remaining_edges)
         return remaining_edges, masked_edges

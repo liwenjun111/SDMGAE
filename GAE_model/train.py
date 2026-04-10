@@ -10,9 +10,10 @@ from tqdm.auto import tqdm
 from torch.utils.data import DataLoader
 # custom modules
 from GAE_model.utils import set_seed, tab_printer, get_PPIdataset
-from GAE_model.model import MaskGAE, NodeDecoder, EdgeDecoder, GNN
+from GAE_model.model import MaskGAE, DualEncMaskGAE, NodeDecoder, EdgeDecoder, GNN
 from GAE_model.mask import MaskEdge, MaskPath, MaskNode
 from SMGAE_main.utils import build_args
+
 
 def train_linkpred(model, splits, args, device="cpu"):
     print('Start Training (Link Prediction Pretext Training)...')
@@ -79,10 +80,32 @@ transform = T.Compose([
 # root = '/data/datasets' # my root directory
 #############################################################################
 
-data, clf_data = get_PPIdataset('/data/datasets', 'feature.csv', 'CPDB.csv', 'label.csv')
+data, clf_data = get_PPIdataset('./data/PANCER/', 'feature.csv', 'CPDB.csv', 'label.csv')
 
 print(data)
 print(clf_data)
+
+x = data.x
+
+
+from GAE_model.mask import mask_edge
+import torch
+
+p = args.p
+rem, msk = mask_edge(data.edge_index, p=p)
+
+print("=== After Edge mask ===")
+print("p =", p)
+print("remaining_edges:", rem.size(1))
+print("masked_edges:", msk.size(1))
+
+deg = (torch.bincount(rem[0].cpu(), minlength=data.num_nodes) +
+       torch.bincount(rem[1].cpu(), minlength=data.num_nodes))
+print("isolated_nodes_after_mask:", int((deg == 0).sum()))
+print("min_degree_after_mask:", int(deg.min()))
+print("mean_degree_after_mask:", float(deg.float().mean()))
+
+
 train_data, val_data, test_data = T.RandomLinkSplit(num_val=0.1, num_test=0.05,
                                                     is_undirected=True,
                                                     split_labels=True,
@@ -122,4 +145,9 @@ train_linkpred(model, splits, args, device=device)
 data = data.to(device)
 embedding = model.encoder.get_embedding(data.x, data.edge_index)
 if args.l2_normalize:
-    embedding = F.normalize(embedding_edge, p=2, dim=1)
+    # embedding = F.normalize(embedding_edge, p=2, dim=1)
+    embedding = F.normalize(embedding, p=2, dim=1)
+torch.save(model.encoder.state_dict(), "pretrained_encoder.pt")
+torch.save(embedding.detach().cpu(), "pretrained_embedding.pt")
+
+print("Pretrained encoder and embeddings saved.")

@@ -26,48 +26,90 @@ def set_seed(seed: int):
 
 
 
-def get_PPIdataset(root: str, node_feature_file: str, edge_index_file: str, target_label_file: str) -> Data:
-    # Load node features from CSV file
-    node_features_df = pd.read_csv(os.path.join(root, node_feature_file))
-    x = torch.tensor(node_features_df.values, dtype=torch.float)
+
+def get_PPIdataset(root: str, node_feature_file: str, edge_index_file: str, target_label_file: str):
+    import os
+    import numpy as np
+    import pandas as pd
+    import torch
+    from torch_geometric.data import Data
+    from torch_geometric.utils import index_to_mask
+    from sklearn.model_selection import train_test_split
+
+    feat_df = pd.read_csv(os.path.join(root, node_feature_file))
+
+    if "gene" not in feat_df.columns:
+        raise ValueError("feature.csv 缺少 gene 列")
+
+    genes = feat_df["gene"].astype(str).tolist()
+    local_id = np.arange(len(genes), dtype=np.int64)
+    gene2local = dict(zip(genes, local_id))
+
+    x_df = feat_df.drop(columns=["gene"])
+    x_df = x_df.apply(pd.to_numeric, errors="coerce").fillna(0.0)
+    x = torch.tensor(x_df.values, dtype=torch.float32)
     x = scale_feats(x)
+    num_nodes = x.size(0)
 
-    # Load edge indices from CSV file
-    edge_index_df = pd.read_csv(os.path.join(root, edge_index_file))
-    edge_index = torch.tensor(edge_index_df.iloc[:, :2].values.T, dtype=torch.long)
 
-    # Load target labels from CSV file
-    target_labels_df = pd.read_csv(os.path.join(root, target_label_file))
-    y = torch.tensor(target_labels_df['label'].values, dtype=torch.long)
+    label_df = pd.read_csv(os.path.join(root, target_label_file))
+    if not {"gene", "index", "label"}.issubset(label_df.columns):
+        raise ValueError("label.csv 需要包含 gene, index, label 三列")
 
-    num_nodes = len(node_features_df)
+    label_df["gene"] = label_df["gene"].astype(str)
+
+
+    merged = label_df.merge(
+        pd.DataFrame({"gene": genes, "local_id": local_id}),
+        on="gene",
+        how="inner"
+    )
+
+
+    global2local = dict(zip(merged["index"].astype(int).tolist(), merged["local_id"].astype(int).tolist()))
+
+    y = torch.full((num_nodes,), -1, dtype=torch.long)
+    for _, r in merged.iterrows():
+        y[int(r["local_id"])] = int(r["label"])
+
+
+    edge_df = pd.read_csv(os.path.join(root, edge_index_file), header=None)
+    u = edge_df.iloc[:, 0].astype(int)
+    v = edge_df.iloc[:, 1].astype(int)
+
+    mask = u.isin(global2local) & v.isin(global2local)
+    u_local = u[mask].map(global2local).to_numpy()
+    v_local = v[mask].map(global2local).to_numpy()
+
+    edge_index = torch.tensor(np.vstack([u_local, v_local]), dtype=torch.long)
+
+
+    assert edge_index.min().item() >= 0
+    assert edge_index.max().item() < num_nodes, (edge_index.max().item(), num_nodes)
 
     data = Data(x=x, edge_index=edge_index, y=y, num_nodes=num_nodes)
 
-    # Generate index train, validation, and test index for node classification
-    # 过滤出目标标签不为-1的数据
-    filtered_data = target_labels_df[target_labels_df['label'] != -1]
-    # 获取过滤后的索引
-    filtered_indices = filtered_data.index
-    # 通过索引过滤特征数据
-    filtered_node_features_df = node_features_df.loc[filtered_indices]
 
-    labeled_x = torch.tensor(filtered_node_features_df.values, dtype=torch.float)
-    labeled_y = torch.tensor(filtered_data['label'].values, dtype=torch.long)
-    labeled_num_nodes = len(filtered_node_features_df)
-    clf_data = Data(labeled_x=labeled_x, labeled_y=labeled_y, labeled_num_nodes=labeled_num_nodes, filtered_indices=filtered_indices)
+    labeled_mask = (y != -1)
+    filtered_indices = labeled_mask.nonzero(as_tuple=False).view(-1)  # local_id
+    labeled_x = x[filtered_indices]
+    labeled_y = y[filtered_indices]
 
+    clf_data = Data(
+        labeled_x=labeled_x,
+        labeled_y=labeled_y,
+        labeled_num_nodes=labeled_x.size(0),
+        filtered_indices=filtered_indices
+    )
+
+    # train/val/test mask
     train_idx, test_idx = train_test_split(range(clf_data.labeled_num_nodes), test_size=0.2, random_state=42)
     val_idx, test_idx = train_test_split(test_idx, test_size=0.5, random_state=42)
-    train_idx = torch.tensor(train_idx)
-    val_idx = torch.tensor(val_idx)
-    test_idx = torch.tensor(test_idx)
-    clf_data.train_mask = index_to_mask(train_idx, clf_data.labeled_num_nodes)
-    clf_data.val_mask = index_to_mask(val_idx, clf_data.labeled_num_nodes)
-    clf_data.test_mask = index_to_mask(test_idx, clf_data.labeled_num_nodes)
+    clf_data.train_mask = index_to_mask(torch.tensor(train_idx), clf_data.labeled_num_nodes)
+    clf_data.val_mask   = index_to_mask(torch.tensor(val_idx), clf_data.labeled_num_nodes)
+    clf_data.test_mask  = index_to_mask(torch.tensor(test_idx), clf_data.labeled_num_nodes)
 
     return data, clf_data
-
 
 
 
